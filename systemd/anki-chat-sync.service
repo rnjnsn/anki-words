@@ -3,5 +3,5 @@ Description=Add new chat words to Anki
 
 [Service]
 Type=oneshot
-Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+Environment=PATH=%h/.local/bin/public-scripts:%h/.local/bin:/usr/local/bin:/usr/bin
 ExecStart=%h/notes/language-learning/anki-words/bin/anki-chat-sync

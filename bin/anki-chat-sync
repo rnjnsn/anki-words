@@ -1,13 +1,12 @@
 #!/bin/bash
 # anki-chat-sync — add new words from words.txt to Anki.
-#   1. DWDS first: dwds-text --anki WORD (skips words already in the deck).
-#   2. No DWDS entry: add a card with the word in bold and an empty Back,
-#      then anki-update -y lets Claude fill it.
+#   Each word goes through anki-de-add (the same as "a" in the dwds popup):
+#   DWDS first; with no DWDS entry or no meanings, a bold card with an empty Back.
+#   At the end, anki-update -y lets Claude fill those cards in one go.
 # Words that were handled are remembered in ~/.cache/anki-words-done.
 set -u
 repo="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 done_file="$HOME/.cache/anki-words-done"
-deck="German Vocabulary"
 mkdir -p "$(dirname "$done_file")"; touch "$done_file"
 
 anki() { curl -s --max-time 10 http://127.0.0.1:8765 -X POST -d "$1"; }
@@ -35,23 +34,12 @@ while IFS= read -r word || [[ -n "$word" ]]; do
     [[ -z "$word" || "$word" == \#* ]] && continue
     grep -qxF -- "$word" "$done_file" && continue
 
-    out=$(dwds-text --anki "$word" 2>&1); rc=$?
-    echo "$out"
+    # same path as the "a" key in the dwds popup: DWDS first, Claude card as fallback
+    anki-de-add --no-fill "$word"; rc=$?
     if (( rc == 0 )); then
         echo "$word" >> "$done_file"
-    elif [[ "$out" == "Kein DWDS-Eintrag"* ]]; then
-        note=$(jq -n --arg f "<b>$word</b>" --arg d "$deck" '{action:"addNote",version:6,params:{note:{
-            deckName:$d, modelName:"Basic", fields:{Front:$f, Back:""}, tags:["claude-chat"],
-            options:{allowDuplicate:false, duplicateScope:"deck"}}}}')
-        err=$(anki "$note" | jq -r '.error // empty')
-        if [[ -z "$err" ]]; then
-            echo "„$word“: no DWDS entry — added for Claude to fill."; need_fill=1
-            echo "$word" >> "$done_file"
-        elif [[ "$err" == *duplicate* ]]; then
-            echo "$word" >> "$done_file"
-        else
-            echo "„$word“: AnkiConnect error: $err"
-        fi
+    elif (( rc == 3 )); then
+        echo "$word" >> "$done_file"; need_fill=1
     fi
     # any other failure (DWDS unreachable, Anki closed mid-run): retried next time
 done < "$repo/words.txt"
