@@ -15,4 +15,4 @@ systemctl --user enable --now anki-chat-sync.timer
 ```
 
 Run by hand: `bin/anki-chat-sync`. Logs: `journalctl --user -u anki-chat-sync`.
-Anki must be open with AnkiConnect; `dwds-text`, `anki-update`, `jq` and `curl` must be on the PATH set in the service file.
+If Anki isn't open, the script starts it and closes it again afterwards (which syncs to AnkiWeb). For that, your sway config needs `exec systemctl --user import-environment WAYLAND_DISPLAY DISPLAY`. `dwds-text`, `anki-update`, `jq` and `curl` must be on the PATH set in the service file.

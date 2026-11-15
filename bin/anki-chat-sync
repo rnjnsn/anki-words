@@ -12,8 +12,19 @@ mkdir -p "$(dirname "$done_file")"; touch "$done_file"
 
 anki() { curl -s --max-time 10 http://127.0.0.1:8765 -X POST -d "$1"; }
 
-if ! anki '{"action":"version","version":6}' >/dev/null; then
-    echo "Anki is not running (AnkiConnect unreachable) — nothing done."; exit 1
+anki_up() { anki '{"action":"version","version":6}' >/dev/null; }
+
+# If Anki isn't open, start it and close it again at the end (closing syncs to AnkiWeb).
+# An Anki window that was already open is left alone.
+if ! anki_up; then
+    if [[ -z "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+        echo "Anki is not running and there is no graphical session to start it in."; exit 1
+    fi
+    setsid -f anki >/dev/null 2>&1
+    for _ in $(seq 60); do anki_up && break; sleep 1; done
+    anki_up || { echo "Started Anki, but AnkiConnect didn't respond within 60 s."; exit 1; }
+    sleep 3   # let Anki finish its startup sync
+    trap 'anki "{\"action\":\"guiExitAnki\",\"version\":6}" >/dev/null' EXIT
 fi
 
 git -C "$repo" pull --quiet origin main || { echo "git pull failed"; exit 1; }
