@@ -82,3 +82,4 @@ Irrweg
 abtun
 beiseiteschieben
 abwandeln
+Perspektivwechsel
