@@ -83,3 +83,4 @@ abtun
 beiseiteschieben
 abwandeln
 Perspektivwechsel
+vorläufig
